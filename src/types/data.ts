@@ -10,4 +10,24 @@ export interface CovidData {
   reportDate?: string;
 }
 
+export interface Country {
+  Id: number;
+  CountryCode: string;
+  CountryName: string;
+  Region?: string;
+  Population?: number;
+}
+
+export interface CovidCase {
+  Id: number;
+  CountryId: number;
+  ReportDate: string;
+  Confirmed: number;
+  Deaths: number;
+  Recovered: number;
+  Active: number;
+  DailyConfirmed: number;
+  DailyDeaths: number;
+}
+
 export type TabType = "confirmed" | "active" | "recovered" | "deaths" | "daily";

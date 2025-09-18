@@ -1,14 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 import "./App.css";
 import Map from "./pages/map";
 import Treemap from "./pages/treemap";
-import type { CovidData } from "./types/data";
+import type { Country, CovidCase, CovidData } from "./types/data";
 import { useEffect, useState } from "react";
 
 function App() {
   const [data, setData] = useState<CovidData[]>([]);
   const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -16,15 +16,29 @@ function App() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/odata/CovidCases");
+
+      const countriesResponse = await axios.get("/odata/Countries");
+      const countries: Country[] = countriesResponse.data.value;
+
+      const countryMap: Record<number, Country> = {};
+      countries.forEach((country) => {
+        countryMap[country.Id] = country;
+      });
+
+      const covidResponse = await axios.get("/odata/CovidCases");
+      const covidCases: CovidCase[] = covidResponse.data.value;
 
       const latestByCountry: Record<string, CovidData> = {};
 
-      response.data.forEach((item: any) => {
-        const countryName = item.country?.countryName || item.countryName;
-        const countryCode = item.country?.countryCode || item.countryCode;
+      covidCases.forEach((covidCase) => {
+        const country = countryMap[covidCase.CountryId];
 
-        const currentReportDate = item.reportDate || "";
+        if (!country) {
+          return;
+        }
+
+        const countryName = country.CountryName;
+        const currentReportDate = covidCase.ReportDate || "";
         const existingReportDate =
           latestByCountry[countryName]?.reportDate || "";
 
@@ -34,14 +48,14 @@ function App() {
         ) {
           latestByCountry[countryName] = {
             countryName: countryName,
-            countryCode: countryCode,
-            confirmed: item.confirmed || 0,
-            deaths: item.deaths || 0,
-            recovered: item.recovered || 0,
-            active: item.active || 0,
-            dailyConfirmed: item.dailyConfirmed || 0,
-            dailyDeaths: item.dailyDeaths || 0,
-            reportDate: item.reportDate,
+            countryCode: country.CountryCode,
+            confirmed: covidCase.Confirmed || 0,
+            deaths: covidCase.Deaths || 0,
+            recovered: covidCase.Recovered || 0,
+            active: covidCase.Active || 0,
+            dailyConfirmed: covidCase.DailyConfirmed || 0,
+            dailyDeaths: covidCase.DailyDeaths || 0,
+            reportDate: covidCase.ReportDate,
           };
         }
       });
