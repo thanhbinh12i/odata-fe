@@ -1,19 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState, useMemo, useCallback } from "react";
-import axios from "axios";
+import { useState, useMemo, useCallback } from "react";
 import * as d3 from "d3";
-
-interface CovidData {
-  countryName: string;
-  countryCode?: string;
-  confirmed: number;
-  deaths: number;
-  recovered: number;
-  active: number;
-  dailyConfirmed: number;
-  dailyDeaths: number;
-  reportDate?: string;
-}
+import type { CovidData, TabType } from "../types/data";
 
 interface TreemapNodeData {
   name: string;
@@ -27,85 +14,38 @@ interface HierarchyRootData {
   children: TreemapNodeData[];
 }
 
-type TabType = "confirmed" | "active" | "recovered" | "deaths" | "daily";
+interface TreemapProps {
+  data: CovidData[];
+  loading: boolean;
+}
 
-function Treemap() {
-  const [data, setData] = useState<CovidData[]>([]);
+function Treemap({ data, loading }: TreemapProps) {
   const [activeTab, setActiveTab] = useState<TabType>("confirmed");
-  const [loading, setLoading] = useState(false);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
     content: string;
   } | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get("/api/CovidCases", {
-        params: {
-          skip: 0,
-          take: 1000,
-        },
-      });
-
-      const latestByCountry: Record<string, CovidData> = {};
-
-      response.data.forEach((item: any) => {
-        const countryName = item.country?.countryName || item.countryName;
-        const countryCode = item.country?.countryCode || item.countryCode;
-
-        const currentReportDate = item.reportDate || "";
-        const existingReportDate = latestByCountry[countryName]?.reportDate || "";
-
-        if (
-          !latestByCountry[countryName] ||
-          new Date(currentReportDate) >
-            new Date(existingReportDate)
-        ) {
-          latestByCountry[countryName] = {
-            countryName: countryName,
-            countryCode: countryCode,
-            confirmed: item.confirmed || 0,
-            deaths: item.deaths || 0,
-            recovered: item.recovered || 0,
-            active: item.active || 0,
-            dailyConfirmed: item.dailyConfirmed || 0,
-            dailyDeaths: item.dailyDeaths || 0,
-            reportDate: item.reportDate,
-          };
-        }
-      });
-
-      const mapped: CovidData[] = Object.values(latestByCountry);
-      setData(mapped);
-    } catch (error) {
-      console.error("Error fetching COVID data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getValue = useCallback((country: CovidData): number => {
-    switch (activeTab) {
-      case "confirmed":
-        return country.confirmed;
-      case "deaths":
-        return country.deaths;
-      case "recovered":
-        return country.recovered;
-      case "active":
-        return country.active;
-      case "daily":
-        return country.dailyConfirmed + country.dailyDeaths;
-      default:
-        return 0;
-    }
-  }, [activeTab]);
+  const getValue = useCallback(
+    (country: CovidData): number => {
+      switch (activeTab) {
+        case "confirmed":
+          return country.confirmed;
+        case "deaths":
+          return country.deaths;
+        case "recovered":
+          return country.recovered;
+        case "active":
+          return country.active;
+        case "daily":
+          return country.dailyConfirmed + country.dailyDeaths;
+        default:
+          return 0;
+      }
+    },
+    [activeTab]
+  );
 
   const getTabLabel = (tab: TabType): string => {
     const labels = {
@@ -121,8 +61,6 @@ function Treemap() {
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + "M";
-    } else if (num >= 1000) {
-      return (num / 1000).toFixed(1) + "K";
     }
     return num.toString();
   };
@@ -141,20 +79,23 @@ function Treemap() {
     };
     return schemes[tab];
   };
-  
-  const treemapData = useMemo<d3.HierarchyRectangularNode<HierarchyRootData | TreemapNodeData> | null>(() => {
+
+  const treemapData = useMemo<d3.HierarchyRectangularNode<
+    HierarchyRootData | TreemapNodeData
+  > | null>(() => {
     if (data.length === 0) return null;
 
     const filteredData = data
-      .filter(d => getValue(d) > 0)
+      .filter((d) => getValue(d) > 0)
       .sort((a, b) => getValue(b) - getValue(a))
       .slice(0, 50);
 
     const total = filteredData.reduce((sum, d) => sum + getValue(d), 0);
+    if (total === 0) return null;
 
     const hierarchyData: HierarchyRootData = {
       name: "root",
-      children: filteredData.map(d => ({
+      children: filteredData.map((d) => ({
         name: d.countryName,
         value: getValue(d),
         data: d,
@@ -162,31 +103,25 @@ function Treemap() {
       })),
     };
 
-    const root = d3.hierarchy<HierarchyRootData | TreemapNodeData>(hierarchyData)
-      .sum(d => (d as TreemapNodeData).value || 0)
+    const root = d3
+      .hierarchy<HierarchyRootData | TreemapNodeData>(hierarchyData)
+      .sum((d) => (d as TreemapNodeData).value || 0)
       .sort((a, b) => (b.value || 0) - (a.value || 0));
 
-    const treemapLayout = d3.treemap<HierarchyRootData | TreemapNodeData>()
+    const treemapLayout = d3
+      .treemap<HierarchyRootData | TreemapNodeData>()
       .size([1200, 600])
       .padding(2)
       .round(true);
 
-    // === SỬA LỖI Ở ĐÂY ===
-    // Thay vì gọi hàm rồi trả về biến cũ:
-    // treemapLayout(root);
-    // return root;
-    //
-    // Hãy trả về trực tiếp kết quả của hàm treemapLayout:
     return treemapLayout(root);
-
   }, [data, getValue]);
 
-  type D3HierarchyNode = d3.HierarchyRectangularNode<HierarchyRootData | TreemapNodeData>;
+  type D3HierarchyNode = d3.HierarchyRectangularNode<
+    HierarchyRootData | TreemapNodeData
+  >;
 
-  const handleMouseEnter = (
-    event: React.MouseEvent,
-    node: D3HierarchyNode
-  ) => {
+  const handleMouseEnter = (event: React.MouseEvent, node: D3HierarchyNode) => {
     const nodeData = node.data as TreemapNodeData;
 
     if (nodeData && nodeData.data) {
@@ -208,8 +143,12 @@ function Treemap() {
           content += `Active: ${formatFullNumber(countryData.active)}`;
           break;
         case "daily":
-          content += `Daily Confirmed: ${formatFullNumber(countryData.dailyConfirmed)}\n`;
-          content += `Daily Deaths: ${formatFullNumber(countryData.dailyDeaths)}`;
+          content += `Daily Confirmed: ${formatFullNumber(
+            countryData.dailyConfirmed
+          )}\n`;
+          content += `Daily Deaths: ${formatFullNumber(
+            countryData.dailyDeaths
+          )}`;
           break;
       }
 
@@ -226,8 +165,11 @@ function Treemap() {
   };
 
   const colorScheme = getColorScheme(activeTab);
-  const colorScale = d3.scaleQuantize<string>()
-    .domain([0, data.length > 0 ? Math.max(...data.map(getValue)) : 1])
+  const maxValue = data.length > 0 ? Math.max(...data.map(getValue)) : 0;
+
+  const colorScale = d3
+    .scaleQuantize<string>()
+    .domain([0, maxValue > 0 ? maxValue : 1])
     .range(colorScheme);
 
   return (
@@ -246,7 +188,9 @@ function Treemap() {
 
       <div className="max-w-7xl mx-auto mb-6 px-4 md:px-6">
         <div className="flex gap-2 md:gap-3 border-b-2 border-gray-200 overflow-x-auto bg-white rounded-t-lg">
-          {(["confirmed", "active", "recovered", "deaths", "daily"] as TabType[]).map((tab) => (
+          {(
+            ["confirmed", "active", "recovered", "deaths", "daily"] as TabType[]
+          ).map((tab) => (
             <button
               key={tab}
               className={`
@@ -254,7 +198,7 @@ function Treemap() {
                 border-b-4 -mb-0.5 whitespace-nowrap
                 ${
                   activeTab === tab
-                    ? "text-blue-600 border-blue-600 bg-blue-50"
+                    ? "text-blue-600 border-blue-600 bg-gray-50"
                     : "text-gray-600 border-transparent hover:text-gray-800 hover:bg-gray-50"
                 }
               `}
@@ -269,22 +213,23 @@ function Treemap() {
       <div className="max-w-7xl mx-auto px-4 md:px-6 pb-8">
         <div className="relative bg-white rounded-b-xl shadow-2xl p-6">
           {loading ? (
-            <div className="flex flex-col items-center justify-center min-h-[600px]">
+            <div className="flex flex-col items-start justify-start min-h-[600px]">
               <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
               <p className="mt-5 text-gray-600 text-lg">
                 Loading COVID-19 data...
               </p>
             </div>
           ) : treemapData ? (
-            <div className="w-full overflow-x-auto">
+            <div className="w-full">
               <svg width="1200" height="600" className="mx-auto">
                 {treemapData.leaves().map((node, i) => {
                   const width = node.x1 - node.x0;
                   const height = node.y1 - node.y0;
-                  const fontSize = Math.min(width / 8, height / 4, 14);
-                  const showText = width > 50 && height > 30;
-                  const showPercentage = width > 80 && height > 50;
-                  const showValue = width > 100 && height > 60;
+
+                  const fontSize = Math.max(
+                    8,
+                    Math.min(width / 8, height / 4, 14)
+                  );
 
                   const nodeData = node.data as TreemapNodeData;
                   const value = nodeData.value;
@@ -307,54 +252,49 @@ function Treemap() {
                         strokeWidth="2"
                         className="transition-all duration-200 hover:opacity-80"
                       />
-                      {showText && (
-                        <>
-                          <text
-                            x={width / 2}
-                            y={height / 2 - (showPercentage ? 10 : 0)}
-                            textAnchor="middle"
-                            fill="#fff"
-                            fontSize={fontSize}
-                            fontWeight="bold"
-                            className="pointer-events-none select-none"
-                            style={{
-                              textShadow: "0 0 3px rgba(0,0,0,0.5)"
-                            }}
-                          >
-                            {name}
-                          </text>
-                          {showValue && (
-                            <text
-                              x={width / 2}
-                              y={height / 2 + fontSize}
-                              textAnchor="middle"
-                              fill="#fff"
-                              fontSize={fontSize * 0.9}
-                              className="pointer-events-none select-none"
-                              style={{
-                                textShadow: "0 0 3px rgba(0,0,0,0.5)"
-                              }}
-                            >
-                              {formatNumber(value)}
-                            </text>
-                          )}
-                          {showPercentage && (
-                            <text
-                              x={width / 2}
-                              y={height / 2 + fontSize * 2.2}
-                              textAnchor="middle"
-                              fill="#fff"
-                              fontSize={fontSize * 0.8}
-                              className="pointer-events-none select-none"
-                              style={{
-                                textShadow: "0 0 3px rgba(0,0,0,0.5)"
-                              }}
-                            >
-                              {percentage}%
-                            </text>
-                          )}
-                        </>
-                      )}
+
+                      <text
+                        x={4}
+                        y={fontSize + 4}
+                        textAnchor="start"
+                        fill={i === 0 ? "#fff" : "#000"}
+                        fontSize={fontSize}
+                        fontWeight="bold"
+                        className="pointer-events-none select-none"
+                        style={{
+                          textShadow: "0 0 3px rgba(0,0,0,0.5)",
+                        }}
+                      >
+                        {name}
+                      </text>
+
+                      <text
+                        x={4}
+                        y={fontSize * 2 + 6}
+                        textAnchor="start"
+                        fill={i === 0 ? "#fff" : "#000"}
+                        fontSize={fontSize * 0.8}
+                        className="pointer-events-none select-none"
+                        style={{
+                          textShadow: "0 0 3px rgba(0,0,0,0.5)",
+                        }}
+                      >
+                        {formatNumber(value)}
+                      </text>
+
+                      <text
+                        x={4}
+                        y={fontSize * 3 + 8}
+                        textAnchor="start"
+                        fill={i === 0 ? "#fff" : "#000"}
+                        fontSize={fontSize * 0.7}
+                        className="pointer-events-none select-none"
+                        style={{
+                          textShadow: "0 0 3px rgba(0,0,0,0.5)",
+                        }}
+                      >
+                        {percentage}%
+                      </text>
                     </g>
                   );
                 })}

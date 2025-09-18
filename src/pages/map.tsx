@@ -1,79 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
-import axios from "axios";
+import type { CovidData, TabType } from "../types/data";
 
-interface CovidData {
-  countryName: string;
-  confirmed: number;
-  deaths: number;
-  recovered: number;
-  active: number;
-  dailyConfirmed: number;
-  dailyDeaths: number;
-  reportDate?: string;
+interface MapProps {
+  data: CovidData[];
+  loading: boolean;
 }
-
-type TabType = "confirmed" | "deaths" | "recovered" | "active" | "daily";
 
 const geoUrl = "map.json";
 
-function Map() {
-  const [data, setData] = useState<CovidData[]>([]);
+function Map({ data, loading }: MapProps) {
   const [activeTab, setActiveTab] = useState<TabType>("confirmed");
-  const [loading, setLoading] = useState(false);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
     content: string;
   } | null>(null);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get("/api/CovidCases", {
-        params: {
-          skip: 0,
-          take: 1000,
-        },
-      });
-
-      const latestByCountry: Record<string, CovidData> = {};
-
-      response.data.map((item: any) => {
-        const countryName = item.country?.countryName || item.countryName;
-
-        if (
-          !latestByCountry[countryName] ||
-          new Date(item.reportDate) >
-            new Date(latestByCountry[countryName].reportDate ?? 0)
-        ) {
-          latestByCountry[countryName] = {
-            countryName: countryName,
-            confirmed: item.confirmed || 0,
-            deaths: item.deaths || 0,
-            recovered: item.recovered || 0,
-            active: item.active || 0,
-            dailyConfirmed: item.dailyConfirmed || 0,
-            dailyDeaths: item.dailyDeaths || 0,
-            reportDate: item.reportDate,
-          };
-        }
-      });
-
-      const mapped: CovidData[] = Object.values(latestByCountry);
-      setData(mapped);
-    } catch (error) {
-      console.error("Error fetching COVID data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getValue = (country: CovidData): number => {
     switch (activeTab) {
@@ -189,13 +133,13 @@ function Map() {
   const colorScale = getColorScale();
 
   return (
-    <div className="min-h-screen bg-blue-500">
-      <div className="text-center py-8 px-4 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="text-center py-8 px-4">
         <h1 className="text-4xl md:text-5xl font-bold mb-3">COVID-19 Case</h1>
       </div>
 
-      <div className="max-w-8xl mx-auto mb-6 px-4 md:px-6">
-        <div className="flex gap-2 md:gap-3 border-b-2 border-gray-200 overflow-x-auto">
+      <div className="max-w-7xl mx-auto mb-6 px-4 md:px-6">
+        <div className="flex gap-2 md:gap-3 border-b-2 border-gray-200  bg-white overflow-x-auto">
           {(
             ["confirmed", "deaths", "recovered", "active", "daily"] as TabType[]
           ).map((tab) => (
@@ -206,7 +150,7 @@ function Map() {
                 border-b-4 -mb-0.5 whitespace-nowrap
                 ${
                   activeTab === tab
-                    ? "text-blue-600 border-blue-600 bg-blue-50"
+                    ? "text-blue-600 border-blue-600 bg-gray-50"
                     : "text-gray-600 border-transparent hover:text-gray-800 hover:bg-gray-50"
                 }
               `}
@@ -218,7 +162,7 @@ function Map() {
         </div>
       </div>
 
-      <div className="max-w-8xl mx-auto px-4 md:px-6 pb-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pb-8">
         <div className="relative bg-white rounded-xl shadow-2xl p-4 md:p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center min-h-[400px]">
