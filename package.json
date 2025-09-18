@@ -10,13 +10,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "@tailwindcss/vite": "^4.1.13",
+    "axios": "^1.12.2",
+    "d3-scale": "^4.0.2",
+    "lucide-react": "^0.544.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-simple-maps": "^3.0.0",
+    "recharts": "^3.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "@types/d3-scale": "^4.0.9",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
+    "@types/react-simple-maps": "^3.0.6",
     "@vitejs/plugin-react": "^5.0.0",
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
