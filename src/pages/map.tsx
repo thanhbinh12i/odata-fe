@@ -40,11 +40,11 @@ function Map({ data, loading }: MapProps) {
     const maxValue = Math.max(...data.map(getValue), 1);
 
     const colorRanges = {
-      confirmed: ["#f7f7f7", "#fee5d9", "#fcae91", "#fb6a4a", "#cb181d"],
-      deaths: ["#f7f7f7", "#e5e5e5", "#969696", "#636363", "#252525"],
-      recovered: ["#f7f7f7", "#e5f5e0", "#a1d99b", "#41ab5d", "#006d2c"],
-      active: ["#f7f7f7", "#deebf7", "#9ecae1", "#3182bd", "#08519c"],
-      daily: ["#f7f7f7", "#fcf4e6", "#ffd700", "#ff9500", "#ff6b00"],
+      confirmed: ["#fee5d9", "#fcae91", "#fb6a4a", "#de2d26", "#a50f15"],
+      deaths: ["#f0f0f0", "#bdbdbd", "#737373", "#525252", "#000000"],
+      recovered: ["#e5f5e0", "#a1d99b", "#41ab5d", "#238b45", "#005a32"],
+      active: ["#deebf7", "#9ecae1", "#3182bd", "#08519c", "#08306b"],
+      daily: ["#fff5eb", "#fdae6b", "#fd8d3c", "#e6550d", "#a63603"],
     };
 
     return scaleLinear<string>()
