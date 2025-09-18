@@ -114,22 +114,6 @@ function Map({ data, loading }: MapProps) {
     setTooltip(null);
   };
 
-  const getLegendData = () => {
-    const maxValue = Math.max(...data.map(getValue), 1);
-    const colorScale = getColorScale();
-    const steps = [0, maxValue * 0.1, maxValue * 0.3, maxValue * 0.6, maxValue];
-
-    return steps.map((value, index) => ({
-      color: colorScale(value),
-      label:
-        index === 0
-          ? "0"
-          : index === steps.length - 1
-          ? `${formatNumber(Math.round(value))}+`
-          : `${formatNumber(Math.round(value))}`,
-    }));
-  };
-
   const colorScale = getColorScale();
 
   return (
@@ -242,23 +226,6 @@ function Map({ data, loading }: MapProps) {
                     }
                   </Geographies>
                 </ComposableMap>
-              </div>
-
-              <div className="absolute bottom-6 md:bottom-10 left-6 md:left-10 bg-white p-3 md:p-4 rounded-lg shadow-lg border border-gray-200">
-                <div className="font-semibold text-gray-800 mb-3 text-sm md:text-base">
-                  {getTabLabel(activeTab)}
-                </div>
-                {getLegendData().map((item, index) => (
-                  <div key={index} className="flex items-center my-2">
-                    <div
-                      className="w-5 h-5 mr-2 rounded border border-gray-300"
-                      style={{ backgroundColor: item.color }}
-                    ></div>
-                    <span className="text-xs md:text-sm text-gray-700">
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
               </div>
             </>
           )}
